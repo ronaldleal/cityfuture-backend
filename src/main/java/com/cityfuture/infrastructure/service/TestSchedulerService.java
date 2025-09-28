@@ -1,12 +1,11 @@
 package com.cityfuture.infrastructure.service;
 
-import java.time.LocalDate;
-import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 import com.cityfuture.infrastructure.persistence.entity.ConstructionOrderEntity;
 import com.cityfuture.infrastructure.persistence.repository.JpaConstructionOrderRepository;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Service
 public class TestSchedulerService {

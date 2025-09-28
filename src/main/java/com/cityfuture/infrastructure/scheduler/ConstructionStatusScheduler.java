@@ -1,13 +1,14 @@
 package com.cityfuture.infrastructure.scheduler;
 
-import java.time.LocalDate;
-import java.util.List;
+import com.cityfuture.infrastructure.persistence.entity.ConstructionOrderEntity;
+import com.cityfuture.infrastructure.persistence.repository.JpaConstructionOrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import com.cityfuture.infrastructure.persistence.entity.ConstructionOrderEntity;
-import com.cityfuture.infrastructure.persistence.repository.JpaConstructionOrderRepository;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Component
 public class ConstructionStatusScheduler {
@@ -70,19 +71,31 @@ public class ConstructionStatusScheduler {
     public void checkConstructionsToStart() {
         logger.info("Ejecutando validación matutina de construcciones a iniciar");
 
-        LocalDate today = LocalDate.now();
-        List<ConstructionOrderEntity> ordersToStart = orderRepository.findOrdersToStartToday(today);
+        try {
+            LocalDate today = LocalDate.now();
+            List<ConstructionOrderEntity> ordersToStart =
+                    orderRepository.findOrdersToStartToday(today);
 
-        for (ConstructionOrderEntity order : ordersToStart) {
-            if ("Pendiente".equals(order.getEstado())) {
-                order.setEstado("En progreso");
-                orderRepository.save(order);
-                logger.info("Orden {} cambiada a 'En progreso' - Proyecto: {}", order.getId(),
-                        order.getProjectName());
+            for (ConstructionOrderEntity order : ordersToStart) {
+                try {
+                    if ("Pendiente".equals(order.getEstado())) {
+                        order.setEstado("En progreso");
+                        orderRepository.save(order);
+                        logger.info("Orden {} cambiada a 'En progreso' - Proyecto: {}",
+                                order.getId(), order.getProjectName());
+                    }
+                } catch (Exception e) {
+                    logger.error("Error al cambiar estado de orden {} a 'En progreso'",
+                            order.getId(), e);
+                }
             }
-        }
 
-        logger.info("Validación matutina completada. {} órdenes iniciadas", ordersToStart.size());
+            logger.info("Validación matutina completada. {} órdenes iniciadas",
+                    ordersToStart.size());
+
+        } catch (Exception e) {
+            logger.error("Error crítico en scheduler matutino", e);
+        }
     }
 
     // Ejecutar cada día a las 11:00 PM - Validar finalización de construcciones
@@ -90,20 +103,30 @@ public class ConstructionStatusScheduler {
     public void checkConstructionsToFinish() {
         logger.info("Ejecutando validación nocturna de construcciones a finalizar");
 
-        LocalDate today = LocalDate.now();
-        List<ConstructionOrderEntity> ordersToFinish =
-                orderRepository.findOrdersToFinishToday(today);
+        try {
+            LocalDate today = LocalDate.now();
+            List<ConstructionOrderEntity> ordersToFinish =
+                    orderRepository.findOrdersToFinishToday(today);
 
-        for (ConstructionOrderEntity order : ordersToFinish) {
-            if ("En progreso".equals(order.getEstado())) {
-                order.setEstado("Finalizado");
-                orderRepository.save(order);
-                logger.info("Orden {} cambiada a 'Finalizado' - Proyecto: {}", order.getId(),
-                        order.getProjectName());
+            for (ConstructionOrderEntity order : ordersToFinish) {
+                try {
+                    if ("En progreso".equals(order.getEstado())) {
+                        order.setEstado("Finalizado");
+                        orderRepository.save(order);
+                        logger.info("Orden {} cambiada a 'Finalizado' - Proyecto: {}",
+                                order.getId(), order.getProjectName());
+                    }
+                } catch (Exception e) {
+                    logger.error("Error al cambiar estado de orden {} a 'Finalizado'",
+                            order.getId(), e);
+                }
             }
-        }
 
-        logger.info("Validación nocturna completada. {} órdenes finalizadas",
-                ordersToFinish.size());
+            logger.info("Validación nocturna completada. {} órdenes finalizadas",
+                    ordersToFinish.size());
+
+        } catch (Exception e) {
+            logger.error("Error crítico en scheduler nocturno", e);
+        }
     }
 }

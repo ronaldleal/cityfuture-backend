@@ -1,8 +1,8 @@
 package com.cityfuture.infrastructure.mapper;
 
-import org.mapstruct.Mapper;
 import com.cityfuture.domain.model.ConstructionOrder;
 import com.cityfuture.infrastructure.persistence.entity.ConstructionOrderEntity;
+import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface ConstructionMapper {

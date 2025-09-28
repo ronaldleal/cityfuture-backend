@@ -1,10 +1,5 @@
 package com.cityfuture.infrastructure.service;
 
-import java.time.LocalDate;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.springframework.stereotype.Service;
 import com.cityfuture.api.exception.ConstructionOrderNotFoundException;
 import com.cityfuture.application.service.ConstructionRequestService;
 import com.cityfuture.domain.exception.InsufficientMaterialException;
@@ -17,9 +12,20 @@ import com.cityfuture.infrastructure.persistence.entity.ConstructionOrderEntity;
 import com.cityfuture.infrastructure.persistence.entity.MaterialEntity;
 import com.cityfuture.infrastructure.persistence.repository.JpaConstructionOrderRepository;
 import com.cityfuture.infrastructure.persistence.repository.JpaMaterialRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDate;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class ConstructionRequestServiceImpl implements ConstructionRequestService {
+
+    private static final Logger logger =
+            LoggerFactory.getLogger(ConstructionRequestServiceImpl.class);
 
     private final JpaConstructionOrderRepository orderRepository;
     private final ConstructionMapper mapper;
@@ -35,28 +41,64 @@ public class ConstructionRequestServiceImpl implements ConstructionRequestServic
 
     @Override
     public ConstructionOrder createOrder(ConstructionOrder order) {
-        ConstructionTypeCriteria criteria = validateConstructionType(order.typeConstruction());
+        logger.info("Iniciando creación de orden de construcción para proyecto: {}",
+                order.projectName());
 
-        // Validar coordenadas únicas ANTES de validar materiales
-        validateUniqueLocation(order.location());
+        try {
+            ConstructionTypeCriteria criteria = validateConstructionType(order.typeConstruction());
+            logger.debug("Tipo de construcción validado: {} - Días estimados: {}",
+                    order.typeConstruction(), criteria.getEstimatedTime());
 
-        validateMaterials(criteria.getMaterials());
+            // Validar coordenadas únicas ANTES de validar materiales
+            validateUniqueLocation(order.location());
+            logger.debug("Coordenadas validadas: lat={}, lon={}", order.location().latitude(),
+                    order.location().longitude());
 
-        ConstructionOrderEntity entity = mapper.toEntity(order);
-        entity.setEstado("Pendiente");
-        entity.setEstimatedDays(criteria.getEstimatedTime());
+            validateMaterials(criteria.getMaterials());
+            logger.debug("Materiales validados correctamente");
 
-        // Calcular fecha de entrega basándose en la última orden existente
-        LocalDate deliveryDate = calculateNextDeliveryDate(criteria.getEstimatedTime());
-        entity.setEntregaDate(deliveryDate);
+            ConstructionOrderEntity entity = mapper.toEntity(order);
+            entity.setEstado("Pendiente");
+            entity.setEstimatedDays(criteria.getEstimatedTime());
 
-        // Calcular fecha de inicio basándose en la fecha de entrega
-        LocalDate startDate = deliveryDate.minusDays(criteria.getEstimatedTime() - 1);
-        entity.setStartDate(startDate);
+            // Calcular fecha de entrega basándose en la última orden existente
+            LocalDate deliveryDate = calculateNextDeliveryDate(criteria.getEstimatedTime());
+            entity.setEntregaDate(deliveryDate);
 
-        ConstructionOrderEntity saved = orderRepository.save(entity);
+            // Calcular fecha de inicio basándose en la fecha de entrega
+            LocalDate startDate = deliveryDate.minusDays(criteria.getEstimatedTime() - 1);
+            entity.setStartDate(startDate);
 
-        return mapper.toDomain(saved);
+            ConstructionOrderEntity saved = orderRepository.save(entity);
+            logger.info(
+                    "Orden de construcción creada exitosamente - ID: {}, Proyecto: {}, Inicio: {}, Entrega: {}",
+                    saved.getId(), saved.getProjectName(), saved.getStartDate(),
+                    saved.getEntregaDate());
+
+            return mapper.toDomain(saved);
+
+        } catch (IllegalArgumentException e) {
+            logger.error(
+                    "Error de validación al crear orden de construcción - Proyecto: {}, Error: {}",
+                    order.projectName(), e.getMessage(), e);
+            throw e;
+        } catch (com.cityfuture.domain.exception.LocationAlreadyOccupiedException e) {
+            logger.error(
+                    "Error de ubicación ocupada al crear orden - Proyecto: {}, Coordenadas: [{},{}], Error: {}",
+                    order.projectName(), order.location().latitude(), order.location().longitude(),
+                    e.getMessage(), e);
+            throw e;
+        } catch (InsufficientMaterialException e) {
+            logger.error(
+                    "Error de materiales insuficientes al crear orden - Proyecto: {}, Error: {}",
+                    order.projectName(), e.getMessage(), e);
+            throw e;
+        } catch (Exception e) {
+            logger.error(
+                    "Error inesperado al crear orden de construcción - Proyecto: {}, Error: {}",
+                    order.projectName(), e.getMessage(), e);
+            throw new RuntimeException("Error interno al crear la orden de construcción", e);
+        }
     }
 
     private void validateUniqueLocation(com.cityfuture.domain.model.Coordinate location) {

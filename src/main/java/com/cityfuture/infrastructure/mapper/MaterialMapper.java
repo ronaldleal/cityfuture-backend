@@ -1,9 +1,8 @@
 package com.cityfuture.infrastructure.mapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
 import com.cityfuture.domain.model.Material;
 import com.cityfuture.infrastructure.persistence.entity.MaterialEntity;
+import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")
 public interface MaterialMapper {

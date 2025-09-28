@@ -16,12 +16,4 @@ public class MaterialEntity {
     String code;
     private Integer quantity;
 
-//    @ManyToOne(fetch = FetchType.LAZY)
-//    @JoinColumn(name = "construction_order_id")
-//    private ConstructionOrderEntity constructionOrder;
-//
-//    @OneToMany
-//    @JoinColumn(name = "construction_order_id")
-//    private List<MaterialEntity> materials;
-
 }

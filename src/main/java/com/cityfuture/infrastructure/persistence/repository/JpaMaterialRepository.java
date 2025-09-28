@@ -1,9 +1,10 @@
 package com.cityfuture.infrastructure.persistence.repository;
 
-import java.util.Optional;
+import com.cityfuture.infrastructure.persistence.entity.MaterialEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import com.cityfuture.infrastructure.persistence.entity.MaterialEntity;
+
+import java.util.Optional;
 
 @Repository
 public interface JpaMaterialRepository extends JpaRepository<MaterialEntity, Long> {

@@ -4,6 +4,6 @@ import lombok.Data;
 
 @Data
 public class MaterialDto {
-    private String materialType; // Ej: "Cemento", "Grava", etc.
+    private String materialType;
     private int quantity;
 }

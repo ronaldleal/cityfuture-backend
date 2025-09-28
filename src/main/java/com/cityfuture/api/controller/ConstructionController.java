@@ -1,44 +1,71 @@
 package com.cityfuture.api.controller;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import com.cityfuture.application.service.ConstructionRequestService;
 import com.cityfuture.domain.model.ConstructionOrder;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/constructions")
 @RequiredArgsConstructor
 public class ConstructionController {
+
+    private static final Logger logger = LoggerFactory.getLogger(ConstructionController.class);
+
     private final ConstructionRequestService constructionRequestService;
 
     // Solo el rol ARQUITECTO puede crear solicitudes
     @PreAuthorize("hasRole('ARQUITECTO')")
     @PostMapping
     public ResponseEntity<Map<String, Object>> createOrder(@RequestBody ConstructionOrder order) {
+        logger.info("Solicitud de creación de orden recibida - Proyecto: {}", order.projectName());
+
         try {
             ConstructionOrder createdOrder = constructionRequestService.createOrder(order);
-            Map<String, Object> response = Map.of("idOrden", createdOrder.id(), "message",
-                    "La solicitud de construcción se efectuó correctamente", "estado",
-                    "Estado actual: ".concat(createdOrder.estado()));
+            Map<String, Object> response = Map.of(
+                "idOrden", createdOrder.id(),
+                "message", "La solicitud de construcción se efectuó correctamente",
+                "estado", "Estado actual: ".concat(createdOrder.estado())
+            );
+            logger.info("Orden creada exitosamente - ID: {}", createdOrder.id());
             return ResponseEntity.ok(response);
         } catch (com.cityfuture.domain.exception.LocationAlreadyOccupiedException e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Ubicación ocupada", "message", e.getMessage()));
+            logger.warn("Intento de crear orden en ubicación ocupada - Proyecto: {}", order.projectName());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "Ubicación ocupada",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now()
+            ));
         } catch (com.cityfuture.domain.exception.InsufficientMaterialException e) {
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Materiales insuficientes", "message", e.getMessage()));
+            logger.warn("Intento de crear orden sin materiales suficientes - Proyecto: {}", order.projectName());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "Materiales insuficientes",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now()
+            ));
+        } catch (IllegalArgumentException e) {
+            logger.warn("Datos inválidos en solicitud de orden - Proyecto: {}, Error: {}", order.projectName(), e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "Datos inválidos",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now()
+            ));
+        } catch (Exception e) {
+            logger.error("Error inesperado al crear orden - Proyecto: {}", order.projectName(), e);
+            return ResponseEntity.status(500).body(Map.of(
+                "error", "Error interno del servidor",
+                "message", "Ocurrió un error inesperado al procesar la solicitud",
+                "timestamp", LocalDateTime.now()
+            ));
         }
     }
 
@@ -75,8 +102,27 @@ public class ConstructionController {
     // Cualquier usuario autenticado puede consultar una orden por id
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
-    public ResponseEntity<ConstructionOrder> getOrderById(@PathVariable Long id) {
-        return ResponseEntity.ok(constructionRequestService.getOrderById(id));
+    public ResponseEntity<?> getOrderById(@PathVariable Long id) {
+        logger.debug("Consultando orden por ID: {}", id);
+
+        try {
+            ConstructionOrder order = constructionRequestService.getOrderById(id);
+            return ResponseEntity.ok(order);
+        } catch (RuntimeException e) {
+            logger.warn("Orden no encontrada - ID: {}", id);
+            return ResponseEntity.status(404).body(Map.of(
+                "error", "Orden no encontrada",
+                "message", "No existe una orden de construcción con el ID: " + id,
+                "timestamp", LocalDateTime.now()
+            ));
+        } catch (Exception e) {
+            logger.error("Error al consultar orden - ID: {}", id, e);
+            return ResponseEntity.status(500).body(Map.of(
+                "error", "Error interno del servidor",
+                "message", "Error al consultar la orden",
+                "timestamp", LocalDateTime.now()
+            ));
+        }
     }
 
     // Solo ARQUITECTO puede actualizar
@@ -91,12 +137,26 @@ public class ConstructionController {
     @PreAuthorize("hasRole('ARQUITECTO')")
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteOrder(@PathVariable Long id) {
+        logger.info("Solicitud de eliminación de orden - ID: {}", id);
+
         try {
             constructionRequestService.deleteOrder(id);
+            logger.info("Orden eliminada exitosamente - ID: {}", id);
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body(Map.of("error",
-                    "No se pudo eliminar la orden de construcción", "message", e.getMessage()));
+            logger.warn("Intento de eliminar orden inexistente - ID: {}", id);
+            return ResponseEntity.status(404).body(Map.of(
+                "error", "No se pudo eliminar la orden de construcción",
+                "message", e.getMessage(),
+                "timestamp", LocalDateTime.now()
+            ));
+        } catch (Exception e) {
+            logger.error("Error inesperado al eliminar orden - ID: {}", id, e);
+            return ResponseEntity.status(500).body(Map.of(
+                "error", "Error interno del servidor",
+                "message", "Error al eliminar la orden",
+                "timestamp", LocalDateTime.now()
+            ));
         }
     }
 
