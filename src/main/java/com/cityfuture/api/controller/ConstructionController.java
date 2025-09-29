@@ -2,11 +2,24 @@ package com.cityfuture.api.controller;
 
 import com.cityfuture.domain.model.ConstructionOrder;
 import com.cityfuture.infrastructure.service.ConstructionRequestUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -14,17 +27,26 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name = "Construcciones", description = "API para gestión de órdenes de construcción")
 @RestController
 @RequestMapping("/api/constructions")
 @AllArgsConstructor
+@Validated
 public class ConstructionController {
     private static final Logger logger = LoggerFactory.getLogger(ConstructionController.class);
     private final ConstructionRequestUseCase constructionRequestService;
 
-    // Solo el rol ARQUITECTO puede crear solicitudes
-    // @PreAuthorize("hasRole('ARQUITECTO')")  // Temporalmente comentado para pruebas
+    @Operation(summary = "Crear nueva orden de construcción", 
+               description = "Crea una nueva orden de construcción con validaciones automáticas de ubicación y materiales")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Orden creada exitosamente",
+                    content = @Content(mediaType = "application/json", 
+                    examples = @ExampleObject(value = "{\"idOrden\": 1, \"message\": \"La solicitud de construcción se efectuó correctamente\", \"estado\": \"Estado actual: Pendiente\"}"))),
+        @ApiResponse(responseCode = "400", description = "Error de validación o ubicación ocupada"),
+        @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+    })
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createOrder(@RequestBody ConstructionOrder order) {
+    public ResponseEntity<Map<String, Object>> createOrder(@Valid @RequestBody ConstructionOrder order) {
         logger.info("Solicitud de creación de orden recibida - Proyecto: {}", order.projectName());
 
         try {
@@ -53,11 +75,10 @@ public class ConstructionController {
         }
     }
 
-    // Endpoint para validar antes de crear
     @PreAuthorize("hasRole('ARQUITECTO')")
     @PostMapping("/validate")
     public ResponseEntity<Map<String, Object>> validateConstructionRequest(
-            @RequestBody ConstructionOrder order) {
+            @Valid @RequestBody ConstructionOrder order) {
         Map<String, Object> validation =
                 constructionRequestService.validateConstructionRequest(order);
 
@@ -68,18 +89,18 @@ public class ConstructionController {
         }
     }
 
-    // Cualquier usuario autenticado puede consultar todas las órdenes
-    // @PreAuthorize("isAuthenticated()")  // Temporalmente comentado para pruebas
+    @Operation(summary = "Obtener todas las órdenes de construcción", 
+               description = "Obtiene la lista de todas las órdenes de construcción, opcionalmente filtradas por estado")
+    @Parameter(name = "estado", description = "Filtrar órdenes por estado (Pendiente, En Progreso, Finalizado)", 
+               example = "Pendiente", required = false)
     @GetMapping
     public ResponseEntity<List<ConstructionOrder>> getAllOrders(
             @RequestParam(value = "estado", required = false) String estado) {
         logger.info("Solicitando lista de construcciones con estado: {}", estado != null ? estado : "todos");
         
         if (estado != null && !estado.trim().isEmpty()) {
-            // Filtrar por estado (mantener el formato original)
             return ResponseEntity.ok(constructionRequestService.getOrdersByStatus(estado.trim()));
         } else {
-            // Devolver todas las órdenes
             return ResponseEntity.ok(constructionRequestService.getAllOrders());
         }
     }
@@ -92,10 +113,9 @@ public class ConstructionController {
                 "Fecha estimada de finalización del proyecto completo"));
     }
 
-    // Cualquier usuario autenticado puede consultar una orden por id
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
-    public ResponseEntity<?> getOrderById(@PathVariable Long id) {
+    public ResponseEntity<?> getOrderById(@PathVariable @NotNull @Min(1) Long id) {
         logger.debug("Consultando orden por ID: {}", id);
 
         try {
@@ -122,10 +142,9 @@ public class ConstructionController {
         return ResponseEntity.ok(constructionRequestService.updateOrder(id, order));
     }
 
-    // Solo ARQUITECTO puede eliminar
     @PreAuthorize("hasRole('ARQUITECTO')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteOrder(@PathVariable Long id) {
+    public ResponseEntity<?> deleteOrder(@PathVariable @NotNull @Min(1) Long id) {
         logger.info("Solicitud de eliminación de orden - ID: {}", id);
 
         try {

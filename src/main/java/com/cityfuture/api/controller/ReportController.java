@@ -3,11 +3,17 @@ package com.cityfuture.api.controller;
 import com.cityfuture.domain.model.ConstructionReport;
 import com.cityfuture.domain.model.ProjectSummary;
 import com.cityfuture.infrastructure.service.ConstructionRequestUseCase;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,14 +22,19 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+@Tag(name = "Reportes", description = "API para generación de reportes y estadísticas del proyecto")
 @RestController
 @RequestMapping("/api/reports")
 @AllArgsConstructor
+@Validated
 public class ReportController {
     private static final Logger logger = LoggerFactory.getLogger(ReportController.class);
 
     private final ConstructionRequestUseCase constructionRequestService;
 
+    @Operation(summary = "Obtener reporte de construcciones", 
+               description = "Genera un reporte completo del estado de las construcciones")
+    @SecurityRequirement(name = "bearer-jwt")
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/constructions")
     public ResponseEntity<?> getConstructionReport() {
