@@ -1,8 +1,8 @@
 package com.cityfuture.api.controller;
 
-import com.cityfuture.application.service.ConstructionRequestService;
 import com.cityfuture.domain.model.ConstructionOrder;
-import lombok.RequiredArgsConstructor;
+import com.cityfuture.infrastructure.service.ConstructionRequestUseCase;
+import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -16,12 +16,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/constructions")
-@RequiredArgsConstructor
+@AllArgsConstructor
 public class ConstructionController {
-
     private static final Logger logger = LoggerFactory.getLogger(ConstructionController.class);
-
-    private final ConstructionRequestService constructionRequestService;
+    private final ConstructionRequestUseCase constructionRequestService;
 
     // Solo el rol ARQUITECTO puede crear solicitudes
     @PreAuthorize("hasRole('ARQUITECTO')")
@@ -31,41 +29,27 @@ public class ConstructionController {
 
         try {
             ConstructionOrder createdOrder = constructionRequestService.createOrder(order);
-            Map<String, Object> response = Map.of(
-                "idOrden", createdOrder.id(),
-                "message", "La solicitud de construcción se efectuó correctamente",
-                "estado", "Estado actual: ".concat(createdOrder.estado())
-            );
+            Map<String, Object> response = Map.of("idOrden", createdOrder.id(), "message",
+                    "La solicitud de construcción se efectuó correctamente", "estado",
+                    "Estado actual: ".concat(createdOrder.estado()));
             logger.info("Orden creada exitosamente - ID: {}", createdOrder.id());
             return ResponseEntity.ok(response);
         } catch (com.cityfuture.domain.exception.LocationAlreadyOccupiedException e) {
-            logger.warn("Intento de crear orden en ubicación ocupada - Proyecto: {}", order.projectName());
-            return ResponseEntity.badRequest().body(Map.of(
-                "error", "Ubicación ocupada",
-                "message", e.getMessage(),
-                "timestamp", LocalDateTime.now()
-            ));
+            logger.warn("Intento de crear orden en ubicación ocupada - Proyecto: {}",
+                    order.projectName());
+            return ResponseEntity.badRequest().body(Map.of("error", "Ubicación ocupada", "message",
+                    e.getMessage(), "timestamp", LocalDateTime.now()));
         } catch (com.cityfuture.domain.exception.InsufficientMaterialException e) {
-            logger.warn("Intento de crear orden sin materiales suficientes - Proyecto: {}", order.projectName());
-            return ResponseEntity.badRequest().body(Map.of(
-                "error", "Materiales insuficientes",
-                "message", e.getMessage(),
-                "timestamp", LocalDateTime.now()
-            ));
-        } catch (IllegalArgumentException e) {
-            logger.warn("Datos inválidos en solicitud de orden - Proyecto: {}, Error: {}", order.projectName(), e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of(
-                "error", "Datos inválidos",
-                "message", e.getMessage(),
-                "timestamp", LocalDateTime.now()
-            ));
+            logger.warn("Intento de crear orden sin materiales suficientes - Proyecto: {}",
+                    order.projectName());
+            return ResponseEntity.badRequest().body(Map.of("error", "Materiales insuficientes",
+                    "message", e.getMessage(), "timestamp", LocalDateTime.now()));
         } catch (Exception e) {
             logger.error("Error inesperado al crear orden - Proyecto: {}", order.projectName(), e);
-            return ResponseEntity.status(500).body(Map.of(
-                "error", "Error interno del servidor",
-                "message", "Ocurrió un error inesperado al procesar la solicitud",
-                "timestamp", LocalDateTime.now()
-            ));
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", "Error interno del servidor", "message",
+                            "Ocurrió un error inesperado al procesar la solicitud", "timestamp",
+                            LocalDateTime.now()));
         }
     }
 
@@ -110,18 +94,14 @@ public class ConstructionController {
             return ResponseEntity.ok(order);
         } catch (RuntimeException e) {
             logger.warn("Orden no encontrada - ID: {}", id);
-            return ResponseEntity.status(404).body(Map.of(
-                "error", "Orden no encontrada",
-                "message", "No existe una orden de construcción con el ID: " + id,
-                "timestamp", LocalDateTime.now()
-            ));
+            return ResponseEntity.status(404)
+                    .body(Map.of("error", "Orden no encontrada", "message",
+                            "No existe una orden de construcción con el ID: " + id, "timestamp",
+                            LocalDateTime.now()));
         } catch (Exception e) {
             logger.error("Error al consultar orden - ID: {}", id, e);
-            return ResponseEntity.status(500).body(Map.of(
-                "error", "Error interno del servidor",
-                "message", "Error al consultar la orden",
-                "timestamp", LocalDateTime.now()
-            ));
+            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor",
+                    "message", "Error al consultar la orden", "timestamp", LocalDateTime.now()));
         }
     }
 
@@ -145,18 +125,13 @@ public class ConstructionController {
             return ResponseEntity.noContent().build();
         } catch (RuntimeException e) {
             logger.warn("Intento de eliminar orden inexistente - ID: {}", id);
-            return ResponseEntity.status(404).body(Map.of(
-                "error", "No se pudo eliminar la orden de construcción",
-                "message", e.getMessage(),
-                "timestamp", LocalDateTime.now()
-            ));
+            return ResponseEntity.status(404)
+                    .body(Map.of("error", "No se pudo eliminar la orden de construcción", "message",
+                            e.getMessage(), "timestamp", LocalDateTime.now()));
         } catch (Exception e) {
             logger.error("Error inesperado al eliminar orden - ID: {}", id, e);
-            return ResponseEntity.status(500).body(Map.of(
-                "error", "Error interno del servidor",
-                "message", "Error al eliminar la orden",
-                "timestamp", LocalDateTime.now()
-            ));
+            return ResponseEntity.status(500).body(Map.of("error", "Error interno del servidor",
+                    "message", "Error al eliminar la orden", "timestamp", LocalDateTime.now()));
         }
     }
 

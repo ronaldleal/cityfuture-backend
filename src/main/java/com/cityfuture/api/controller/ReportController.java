@@ -1,8 +1,8 @@
 package com.cityfuture.api.controller;
 
-import com.cityfuture.application.service.ConstructionRequestService;
 import com.cityfuture.domain.model.ConstructionReport;
 import com.cityfuture.domain.model.ProjectSummary;
+import com.cityfuture.infrastructure.service.ConstructionRequestUseCase;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +20,9 @@ import java.util.Map;
 @RequestMapping("/api/reports")
 @RequiredArgsConstructor
 public class ReportController {
-
     private static final Logger logger = LoggerFactory.getLogger(ReportController.class);
 
-    private final ConstructionRequestService constructionRequestService;
+    private final ConstructionRequestUseCase constructionRequestService;
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/constructions")

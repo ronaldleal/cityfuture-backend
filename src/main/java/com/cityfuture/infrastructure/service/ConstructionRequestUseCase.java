@@ -1,7 +1,6 @@
 package com.cityfuture.infrastructure.service;
 
 import com.cityfuture.api.exception.ConstructionOrderNotFoundException;
-import com.cityfuture.application.service.ConstructionRequestService;
 import com.cityfuture.domain.exception.InsufficientMaterialException;
 import com.cityfuture.domain.model.ConstructionOrder;
 import com.cityfuture.domain.model.ConstructionReport;
@@ -12,34 +11,23 @@ import com.cityfuture.infrastructure.persistence.entity.ConstructionOrderEntity;
 import com.cityfuture.infrastructure.persistence.entity.MaterialEntity;
 import com.cityfuture.infrastructure.persistence.repository.JpaConstructionOrderRepository;
 import com.cityfuture.infrastructure.persistence.repository.JpaMaterialRepository;
+import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-@Service
-public class ConstructionRequestServiceImpl implements ConstructionRequestService {
-
-    private static final Logger logger =
-            LoggerFactory.getLogger(ConstructionRequestServiceImpl.class);
+@AllArgsConstructor
+public class ConstructionRequestUseCase {
+    private static final Logger logger = LoggerFactory.getLogger(ConstructionRequestUseCase.class);
 
     private final JpaConstructionOrderRepository orderRepository;
     private final ConstructionMapper mapper;
     private final JpaMaterialRepository materialRepository;
-
-
-    public ConstructionRequestServiceImpl(JpaConstructionOrderRepository orderRepository,
-            ConstructionMapper mapper, JpaMaterialRepository materialRepository) {
-        this.orderRepository = orderRepository;
-        this.mapper = mapper;
-        this.materialRepository = materialRepository;
-    }
-
-    @Override
+    
     public ConstructionOrder createOrder(ConstructionOrder order) {
         logger.info("Iniciando creación de orden de construcción para proyecto: {}",
                 order.projectName());
@@ -144,20 +132,15 @@ public class ConstructionRequestServiceImpl implements ConstructionRequestServic
         return getEstimatedDeliveryDate();
     }
 
-
-
-    @Override
     public List<ConstructionOrder> getAllOrders() {
         return orderRepository.findAll().stream().map(mapper::toDomain).toList();
     }
 
-    @Override
     public ConstructionOrder getOrderById(Long id) {
         return orderRepository.findById(id).map(mapper::toDomain).orElseThrow(
                 () -> new RuntimeException("Construction order not found with id: " + id));
     }
 
-    @Override
     public ConstructionOrder updateOrder(Long id, ConstructionOrder order) {
         return orderRepository.findById(id).map(existing -> {
             // Validar los materiales para el tipo de construcción actual
@@ -209,7 +192,6 @@ public class ConstructionRequestServiceImpl implements ConstructionRequestServic
         }
     }
 
-    @Override
     public void deleteOrder(Long id) {
         if (!orderRepository.existsById(id)) {
             throw new RuntimeException("No existe una orden de construcción con el ID: " + id);
@@ -319,7 +301,6 @@ public class ConstructionRequestServiceImpl implements ConstructionRequestServic
         });
     }
 
-    @Override
     public Map<String, Object> validateConstructionRequest(ConstructionOrder order) {
         try {
             // Ejecutar todas las validaciones SIN crear la orden
@@ -342,7 +323,6 @@ public class ConstructionRequestServiceImpl implements ConstructionRequestServic
         }
     }
 
-    @Override
     public ConstructionReport generateConstructionReport() {
         List<ConstructionOrder> allOrders = getAllOrders();
 
