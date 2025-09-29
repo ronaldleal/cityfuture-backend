@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,10 @@ public class ConstructionRequestUseCase {
 
             validateMaterials(criteria.getMaterials());
             logger.debug("Materiales validados correctamente");
+
+            // Consumir los materiales después de la validación exitosa
+            consumeMaterials(criteria.getMaterials());
+            logger.info("Materiales consumidos exitosamente para construcción: {}", order.projectName());
 
             ConstructionOrderEntity entity = mapper.toEntity(order);
             entity.setEstado("Pendiente");
@@ -136,6 +141,36 @@ public class ConstructionRequestUseCase {
         return orderRepository.findAll().stream().map(mapper::toDomain).toList();
     }
 
+    public List<ConstructionOrder> getOrdersByStatus(String estado) {
+        logger.info("Filtrando construcciones por estado: '{}'", estado);
+        
+        List<ConstructionOrderEntity> allEntities = orderRepository.findAll();
+        
+        // Debug: mostrar todos los estados en la BD
+        List<String> estadosEnBD = allEntities.stream()
+                .map(ConstructionOrderEntity::getEstado)
+                .distinct()
+                .toList();
+        logger.info("Estados únicos en BD: {}", estadosEnBD);
+        
+        // Filtrar con comparación más flexible
+        List<ConstructionOrderEntity> filteredEntities = allEntities.stream()
+                .filter(entity -> {
+                    String estadoEntity = entity.getEstado();
+                    boolean matches = estado.equalsIgnoreCase(estadoEntity);
+                    logger.debug("Comparando '{}' con '{}': {}", estado, estadoEntity, matches);
+                    return matches;
+                })
+                .toList();
+                
+        logger.info("Construcciones encontradas con estado '{}': {} de {}", 
+                estado, filteredEntities.size(), allEntities.size());
+        
+        return filteredEntities.stream()
+                .map(mapper::toDomain)
+                .toList();
+    }
+
     public ConstructionOrder getOrderById(Long id) {
         return orderRepository.findById(id).map(mapper::toDomain).orElseThrow(
                 () -> new RuntimeException("Construction order not found with id: " + id));
@@ -176,18 +211,81 @@ public class ConstructionRequestUseCase {
     }
 
     private void validateMaterials(Map<String, Integer> requiredMaterials) {
+        logger.info("Validando y reservando materiales para construcción");
+        List<String> insufficientMaterials = new ArrayList<>();
+        
         for (var requiredMaterial : requiredMaterials.entrySet()) {
             String code = requiredMaterial.getKey();
             int requiredQuantity = requiredMaterial.getValue();
 
             // Buscar el material en la base de datos por código
-            int availableQuantity =
-                    materialRepository.findByCode(code).map(MaterialEntity::getQuantity).orElse(0);
+            var materialOpt = materialRepository.findByCode(code);
+            if (!materialOpt.isPresent()) {
+                throw new InsufficientMaterialException(
+                        "Material no encontrado: " + code);
+            }
+            
+            MaterialEntity material = materialOpt.get();
+            int availableQuantity = material.getQuantity();
 
             if (availableQuantity < requiredQuantity) {
-                throw new InsufficientMaterialException(
-                        "Material insuficiente para " + code + ": se requiere " + requiredQuantity
-                                + ", pero hay disponible " + availableQuantity);
+                int deficit = requiredQuantity - availableQuantity;
+                insufficientMaterials.add(
+                    String.format("%s (%s) - Disponible: %d, Requerido: %d, Faltan: %d", 
+                        material.getMaterialName(), code, availableQuantity, requiredQuantity, deficit)
+                );
+            } else {
+                logger.debug("Validación exitosa para {}: disponible={}, requerido={}", 
+                        code, availableQuantity, requiredQuantity);
+            }
+        }
+        
+        // Si hay materiales insuficientes, lanzar excepción con todos los detalles
+        if (!insufficientMaterials.isEmpty()) {
+            String errorMessage = "Materiales insuficientes para construcción: " + String.join("; ", insufficientMaterials);
+            throw new InsufficientMaterialException(errorMessage);
+        }
+    }
+
+    private void consumeMaterials(Map<String, Integer> requiredMaterials) {
+        logger.info("Consumiendo materiales para construcción");
+        
+        for (var requiredMaterial : requiredMaterials.entrySet()) {
+            String code = requiredMaterial.getKey();
+            int requiredQuantity = requiredMaterial.getValue();
+
+            // Buscar el material y reducir la cantidad
+            var materialOpt = materialRepository.findByCode(code);
+            if (materialOpt.isPresent()) {
+                MaterialEntity material = materialOpt.get();
+                int newQuantity = material.getQuantity() - requiredQuantity;
+                material.setQuantity(newQuantity);
+                materialRepository.save(material);
+                
+                logger.info("Material {} actualizado: {} -> {} unidades", 
+                        code, material.getQuantity() + requiredQuantity, newQuantity);
+            }
+        }
+    }
+
+    private void returnMaterialsToStock(Map<String, Integer> requiredMaterials) {
+        logger.info("Devolviendo materiales al stock");
+        
+        for (var requiredMaterial : requiredMaterials.entrySet()) {
+            String code = requiredMaterial.getKey();
+            int quantityToReturn = requiredMaterial.getValue();
+
+            // Buscar el material y aumentar la cantidad
+            var materialOpt = materialRepository.findByCode(code);
+            if (materialOpt.isPresent()) {
+                MaterialEntity material = materialOpt.get();
+                int oldQuantity = material.getQuantity();
+                int newQuantity = oldQuantity + quantityToReturn;
+                material.setQuantity(newQuantity);
+                materialRepository.save(material);
+                
+                logger.info("Material {} devuelto al stock: {} -> {} unidades", 
+                        code, oldQuantity, newQuantity);
             }
         }
     }
@@ -201,7 +299,12 @@ public class ConstructionRequestUseCase {
         ConstructionOrderEntity orderToDelete = orderRepository.findById(id).orElse(null);
         if (orderToDelete != null) {
             LocalDate deletedStartDate = orderToDelete.getEntregaDate();
-            Integer deletedDays = orderToDelete.getEstimatedDays();
+            
+            // Devolver materiales al stock antes de eliminar
+            String constructionType = orderToDelete.getTypeConstruction();
+            ConstructionTypeCriteria criteria = validateConstructionType(constructionType);
+            returnMaterialsToStock(criteria.getMaterials());
+            logger.info("Materiales devueltos al stock para construcción eliminada: {}", orderToDelete.getProjectName());
 
             // Eliminar la orden
             orderRepository.deleteById(id);

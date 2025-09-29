@@ -9,6 +9,7 @@ import com.cityfuture.infrastructure.persistence.entity.MaterialEntity;
 import com.cityfuture.infrastructure.persistence.entity.MaterialStockEntity;
 import com.cityfuture.infrastructure.persistence.repository.JpaMaterialRepository;
 import com.cityfuture.infrastructure.persistence.repository.JpaMaterialStockRepository;
+import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
@@ -18,20 +19,13 @@ import java.util.List;
 
 @Primary
 @Service
-public class MaterialServiceImpl implements MaterialService {
-
-    private static final Logger logger = LoggerFactory.getLogger(MaterialServiceImpl.class);
+@AllArgsConstructor
+public class MaterialServiceUseCase implements MaterialService {
+    private static final Logger logger = LoggerFactory.getLogger(MaterialServiceUseCase.class);
 
     private final JpaMaterialRepository materialRepository;
     private final JpaMaterialStockRepository stockRepository;
     private final MaterialMapper mapper;
-
-    public MaterialServiceImpl(JpaMaterialRepository materialRepository,
-            JpaMaterialStockRepository stockRepository, MaterialMapper mapper) {
-        this.materialRepository = materialRepository;
-        this.stockRepository = stockRepository;
-        this.mapper = mapper;
-    }
 
     @Override
     public Material createMaterial(Material material) {

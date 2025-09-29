@@ -3,7 +3,7 @@ package com.cityfuture.api.controller;
 import com.cityfuture.domain.model.ConstructionReport;
 import com.cityfuture.domain.model.ProjectSummary;
 import com.cityfuture.infrastructure.service.ConstructionRequestUseCase;
-import lombok.RequiredArgsConstructor;
+import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +18,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reports")
-@RequiredArgsConstructor
+@AllArgsConstructor
 public class ReportController {
     private static final Logger logger = LoggerFactory.getLogger(ReportController.class);
 

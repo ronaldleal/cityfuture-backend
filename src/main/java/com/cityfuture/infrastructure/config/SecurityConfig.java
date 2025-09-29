@@ -15,14 +15,22 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
-@EnableMethodSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
+
+    private final CorsConfig corsConfig;
+
+    public SecurityConfig(CorsConfig corsConfig) {
+        this.corsConfig = corsConfig;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
+                .cors(cors -> cors.configurationSource(corsConfig.corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/construction-requests/**").authenticated()
+                        .requestMatchers("/api/**").permitAll()  // Permitir acceso temporal para pruebas
                         .anyRequest().permitAll()
                 )
                 .httpBasic(Customizer.withDefaults())

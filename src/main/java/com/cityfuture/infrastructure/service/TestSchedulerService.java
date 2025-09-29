@@ -2,18 +2,16 @@ package com.cityfuture.infrastructure.service;
 
 import com.cityfuture.infrastructure.persistence.entity.ConstructionOrderEntity;
 import com.cityfuture.infrastructure.persistence.repository.JpaConstructionOrderRepository;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
 
 @Service
+@AllArgsConstructor
 public class TestSchedulerService {
     private final JpaConstructionOrderRepository orderRepository;
-
-    public TestSchedulerService(JpaConstructionOrderRepository orderRepository) {
-        this.orderRepository = orderRepository;
-    }
 
     public String simulateSchedulerForDate(LocalDate testDate) {
         StringBuilder result = new StringBuilder();
