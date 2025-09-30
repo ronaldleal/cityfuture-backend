@@ -1,5 +1,6 @@
 package com.cityfuture.api.controller;
 
+import com.cityfuture.api.dto.CreateConstructionOrderRequest;
 import com.cityfuture.domain.model.ConstructionOrder;
 import com.cityfuture.infrastructure.service.ConstructionRequestUseCase;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,10 +47,12 @@ public class ConstructionController {
         @ApiResponse(responseCode = "500", description = "Error interno del servidor")
     })
     @PostMapping
-    public ResponseEntity<Map<String, Object>> createOrder(@Valid @RequestBody ConstructionOrder order) {
-        logger.info("Solicitud de creación de orden recibida - Proyecto: {}", order.projectName());
+    public ResponseEntity<Map<String, Object>> createOrder(@Valid @RequestBody CreateConstructionOrderRequest request) {
+        logger.info("Solicitud de creación de orden recibida - Proyecto: {}", request.projectName());
 
         try {
+            // Convertir DTO a modelo de dominio
+            ConstructionOrder order = request.toDomain();
             ConstructionOrder createdOrder = constructionRequestService.createOrder(order);
             Map<String, Object> response = Map.of("idOrden", createdOrder.id(), "message",
                     "La solicitud de construcción se efectuó correctamente", "estado",
@@ -58,16 +61,16 @@ public class ConstructionController {
             return ResponseEntity.ok(response);
         } catch (com.cityfuture.domain.exception.LocationAlreadyOccupiedException e) {
             logger.warn("Intento de crear orden en ubicación ocupada - Proyecto: {}",
-                    order.projectName());
+                    request.projectName());
             return ResponseEntity.badRequest().body(Map.of("error", "Ubicación ocupada", "message",
                     e.getMessage(), "timestamp", LocalDateTime.now()));
         } catch (com.cityfuture.domain.exception.InsufficientMaterialException e) {
             logger.warn("Intento de crear orden sin materiales suficientes - Proyecto: {}",
-                    order.projectName());
+                    request.projectName());
             return ResponseEntity.badRequest().body(Map.of("error", "Materiales insuficientes",
                     "message", e.getMessage(), "timestamp", LocalDateTime.now()));
         } catch (Exception e) {
-            logger.error("Error inesperado al crear orden - Proyecto: {}", order.projectName(), e);
+            logger.error("Error inesperado al crear orden - Proyecto: {}", request.projectName(), e);
             return ResponseEntity.status(500)
                     .body(Map.of("error", "Error interno del servidor", "message",
                             "Ocurrió un error inesperado al procesar la solicitud", "timestamp",

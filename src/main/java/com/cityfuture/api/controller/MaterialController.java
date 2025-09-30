@@ -63,10 +63,24 @@ public class MaterialController {
         return ResponseEntity.ok(materialServiceUseCase.getMaterialById(id));
     }
 
+    @PreAuthorize("hasRole('ARQUITECTO')")
     @PutMapping("/{id}")
-    public ResponseEntity<Material> updateMaterial(@PathVariable @NotNull @Min(1) Long id,
+    public ResponseEntity<?> updateMaterial(@PathVariable @NotNull @Min(1) Long id,
             @Valid @RequestBody Material material) {
-        return ResponseEntity.ok(materialServiceUseCase.updateMaterial(id, material));
+        logger.info("Solicitud de actualización de material - ID: {}, Nombre: {}", id, material.materialName());
+        
+        try {
+            Material updatedMaterial = materialServiceUseCase.updateMaterial(id, material);
+            logger.info("Material actualizado exitosamente - ID: {}", updatedMaterial.id());
+            return ResponseEntity.ok(updatedMaterial);
+        } catch (Exception e) {
+            logger.error("Error al actualizar material - ID: {}", id, e);
+            return ResponseEntity.status(500).body(Map.of(
+                "error", "Error interno del servidor",
+                "message", "Error al actualizar el material: " + e.getMessage(),
+                "timestamp", LocalDateTime.now()
+            ));
+        }
     }
 
     @DeleteMapping("/{id}")

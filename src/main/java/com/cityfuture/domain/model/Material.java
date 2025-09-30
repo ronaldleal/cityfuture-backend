@@ -11,7 +11,7 @@ public record Material(
         
         @NotBlank(message = "El código del material no puede estar vacío")
         @Size(min = 2, max = 20, message = "El código del material debe tener entre 2 y 20 caracteres")
-        @Pattern(regexp = "^[A-Z0-9_-]+$", message = "El código debe contener solo letras mayúsculas, números, guiones y guiones bajos")
+        @Pattern(regexp = "^[A-Za-z0-9_-]+$", message = "El código debe contener solo letras, números, guiones y guiones bajos")
         String code,
         
         @NotNull(message = "La cantidad es obligatoria")
