@@ -39,7 +39,6 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfig.corsConfigurationSource()))
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints públicos - no requieren autenticación
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/swagger-ui/**",
@@ -48,12 +47,10 @@ public class SecurityConfig {
                                 "/actuator/health"
                         ).permitAll()
                         
-                        // Endpoints que requieren autenticación
                         .requestMatchers("/api/constructions/**").hasAnyRole(ROLE_ADMIN, ROLE_ARQUITECTO, ROLE_USER)
                         .requestMatchers("/api/materials/**").hasAnyRole(ROLE_ADMIN, ROLE_ARQUITECTO, ROLE_USER)
                         .requestMatchers("/api/reports/**").hasAnyRole(ROLE_ADMIN, ROLE_ARQUITECTO, ROLE_USER)
                         
-                        // Cualquier otra petición requiere autenticación
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

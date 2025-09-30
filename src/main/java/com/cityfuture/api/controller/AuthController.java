@@ -72,7 +72,6 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<Object> login(@Valid @RequestBody LoginRequest loginRequest) {
         try {
-            // Autenticar al usuario
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                     loginRequest.getUsername(),
@@ -80,25 +79,21 @@ public class AuthController {
                 )
             );
 
-            // Cargar detalles del usuario
             UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getUsername());
             
-            // Generar token JWT
             String jwtToken = jwtService.generateToken(userDetails);
             
-            // Extraer el rol principal del usuario
             String role = userDetails.getAuthorities().stream()
                     .findFirst()
                     .map(GrantedAuthority::getAuthority)
                     .map(authority -> authority.replace("ROLE_", ""))
                     .orElse("USER");
             
-            // Preparar respuesta
             LoginResponse response = new LoginResponse();
             response.setToken(jwtToken);
             response.setUsername(userDetails.getUsername());
             response.setRole(role);
-            response.setExpiresIn(86400); // 24 horas en segundos
+            response.setExpiresIn(86400);
 
             log.info("Usuario autenticado exitosamente: {}", loginRequest.getUsername());
             return ResponseEntity.ok(response);

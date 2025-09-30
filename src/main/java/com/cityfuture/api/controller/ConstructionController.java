@@ -51,7 +51,6 @@ public class ConstructionController {
         logger.info("Solicitud de creación de orden recibida - Proyecto: {}", request.projectName());
 
         try {
-            // Convertir DTO a modelo de dominio
             ConstructionOrder order = request.toDomain();
             ConstructionOrder createdOrder = constructionRequestService.createOrder(order);
             Map<String, Object> response = Map.of("idOrden", createdOrder.id(), "message",
@@ -137,7 +136,6 @@ public class ConstructionController {
         }
     }
 
-    // Solo ARQUITECTO puede actualizar
     @PreAuthorize("hasRole('ARQUITECTO')")
     @PutMapping("/{id}")
     public ResponseEntity<ConstructionOrder> updateOrder(@PathVariable Long id,

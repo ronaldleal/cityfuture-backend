@@ -38,7 +38,6 @@ public class ConstructionRequestUseCase {
             logger.debug("Tipo de construcción validado: {} - Días estimados: {}",
                     order.typeConstruction(), criteria.getEstimatedTime());
 
-            // Validar coordenadas únicas ANTES de validar materiales
             validateUniqueLocation(order.location());
             logger.debug("Coordenadas validadas: lat={}, lon={}", order.location().latitude(),
                     order.location().longitude());
@@ -46,7 +45,6 @@ public class ConstructionRequestUseCase {
             validateMaterials(criteria.getMaterials());
             logger.debug("Materiales validados correctamente");
 
-            // Consumir los materiales después de la validación exitosa
             consumeMaterials(criteria.getMaterials());
             logger.info("Materiales consumidos exitosamente para construcción: {}", order.projectName());
 
@@ -54,11 +52,9 @@ public class ConstructionRequestUseCase {
             entity.setEstado("Pendiente");
             entity.setEstimatedDays(criteria.getEstimatedTime());
 
-            // Calcular fecha de entrega basándose en la última orden existente
             LocalDate deliveryDate = calculateNextDeliveryDate(criteria.getEstimatedTime());
             entity.setEntregaDate(deliveryDate);
 
-            // Calcular fecha de inicio basándose en la fecha de entrega
             LocalDate startDate = deliveryDate.minusDays(criteria.getEstimatedTime() - 1);
             entity.setStartDate(startDate);
 
@@ -153,7 +149,6 @@ public class ConstructionRequestUseCase {
                 .toList();
         logger.info("Estados únicos en BD: {}", estadosEnBD);
         
-        // Filtrar con comparación más flexible
         List<ConstructionOrderEntity> filteredEntities = allEntities.stream()
                 .filter(entity -> {
                     String estadoEntity = entity.getEstado();
@@ -178,20 +173,16 @@ public class ConstructionRequestUseCase {
 
     public ConstructionOrder updateOrder(Long id, ConstructionOrder order) {
         return orderRepository.findById(id).map(existing -> {
-            // Validar los materiales para el tipo de construcción actual
             ConstructionTypeCriteria currentCriteria =
                     validateConstructionType(existing.getTypeConstruction());
             validateMaterials(currentCriteria.getMaterials());
 
-            // Validar si el tipo de construcción cambió
             if (!existing.getTypeConstruction().equalsIgnoreCase(order.typeConstruction())) {
                 ConstructionTypeCriteria newCriteria =
                         validateConstructionType(order.typeConstruction());
                 validateMaterials(newCriteria.getMaterials());
                 existing.setEstimatedDays(newCriteria.getEstimatedTime());
             }
-
-            // Actualizar campos sin cambiar la fecha de inicio ya establecida
             existing.setTypeConstruction(order.typeConstruction());
             existing.setProjectName(order.projectName());
             existing.setEstado("Pendiente");
@@ -275,7 +266,6 @@ public class ConstructionRequestUseCase {
             String code = requiredMaterial.getKey();
             int quantityToReturn = requiredMaterial.getValue();
 
-            // Buscar el material y aumentar la cantidad
             var materialOpt = materialRepository.findByCode(code);
             if (materialOpt.isPresent()) {
                 MaterialEntity material = materialOpt.get();
@@ -295,18 +285,14 @@ public class ConstructionRequestUseCase {
             throw new RuntimeException("No existe una orden de construcción con el ID: " + id);
         }
 
-        // Al eliminar una orden, necesitamos recalcular las fechas de las órdenes posteriores
         ConstructionOrderEntity orderToDelete = orderRepository.findById(id).orElse(null);
         if (orderToDelete != null) {
             LocalDate deletedStartDate = orderToDelete.getEntregaDate();
             
-            // Devolver materiales al stock antes de eliminar
             String constructionType = orderToDelete.getTypeConstruction();
             ConstructionTypeCriteria criteria = validateConstructionType(constructionType);
             returnMaterialsToStock(criteria.getMaterials());
             logger.info("Materiales devueltos al stock para construcción eliminada: {}", orderToDelete.getProjectName());
-
-            // Eliminar la orden
             orderRepository.deleteById(id);
 
             // Recalcular fechas de órdenes posteriores
@@ -315,28 +301,24 @@ public class ConstructionRequestUseCase {
     }
 
     private void recalculateSubsequentOrders(LocalDate deletedDeliveryDate) {
-        // Obtener todas las órdenes ordenadas por fecha de entrega
         List<ConstructionOrderEntity> allOrders = orderRepository.findAll().stream()
                 .sorted((o1, o2) -> o1.getEntregaDate().compareTo(o2.getEntregaDate())).toList();
 
-        // Obtener órdenes posteriores a la eliminada y recalcular sus fechas
         List<ConstructionOrderEntity> subsequentOrders = allOrders.stream()
                 .filter(order -> order.getEntregaDate().isAfter(deletedDeliveryDate)).toList();
 
-        // Buscar la nueva fecha base (última orden antes de las que se van a recalcular)
         LocalDate baseDate = allOrders.stream()
                 .filter(order -> order.getEntregaDate().isBefore(deletedDeliveryDate))
-                .reduce((first, second) -> second) // Obtener la última
+                .reduce((first, second) -> second)
                 .map(ConstructionOrderEntity::getEntregaDate).orElse(LocalDate.now());
 
         for (ConstructionOrderEntity order : subsequentOrders) {
-            // Cada orden inicia al día siguiente de terminar la anterior
             LocalDate newStartDate = baseDate.plusDays(1);
             LocalDate newDeliveryDate = newStartDate.plusDays(order.getEstimatedDays() - 1);
 
-            order.setStartDate(newStartDate); // Actualizar fecha de inicio
-            order.setEntregaDate(newDeliveryDate); // Actualizar fecha de entrega
-            baseDate = newDeliveryDate; // Actualizar para la siguiente iteración
+            order.setStartDate(newStartDate);
+            order.setEntregaDate(newDeliveryDate);
+            baseDate = newDeliveryDate;
             orderRepository.save(order);
         }
     }
@@ -358,7 +340,6 @@ public class ConstructionRequestUseCase {
     public void updateConstructionStatuses() {
         LocalDate today = LocalDate.now();
 
-        // Iniciar construcciones que deben empezar hoy - usar startDate real
         List<ConstructionOrderEntity> pendingOrders = orderRepository.findPendingOrders();
         List<ConstructionOrderEntity> ordersToStart =
                 pendingOrders.stream().filter(order -> order.getStartDate().equals(today)).toList();
@@ -368,7 +349,6 @@ public class ConstructionRequestUseCase {
             orderRepository.save(order);
         });
 
-        // Finalizar construcciones que deben terminar hoy
         List<ConstructionOrderEntity> ordersToFinish =
                 orderRepository.findOrdersToFinishToday(today);
         ordersToFinish.forEach(order -> {
@@ -382,7 +362,6 @@ public class ConstructionRequestUseCase {
     public void processOverdueOrders() {
         LocalDate today = LocalDate.now();
 
-        // Buscar órdenes pendientes cuya fecha de inicio ya pasó - usar startDate real
         List<ConstructionOrderEntity> pendingOrders = orderRepository.findPendingOrders();
         List<ConstructionOrderEntity> overdueOrders = pendingOrders.stream().filter(
                 order -> order.getStartDate().isBefore(today) || order.getStartDate().equals(today))
@@ -393,10 +372,8 @@ public class ConstructionRequestUseCase {
             LocalDate endDate = order.getEntregaDate();
 
             if (today.isAfter(endDate)) {
-                // Si ya pasó la fecha de entrega, marcar como finalizado
                 order.setEstado("Finalizado");
             } else if (today.isAfter(startDate) || today.equals(startDate)) {
-                // Si está en el período de construcción, marcar como en progreso
                 order.setEstado("En progreso");
             }
 
@@ -406,12 +383,9 @@ public class ConstructionRequestUseCase {
 
     public Map<String, Object> validateConstructionRequest(ConstructionOrder order) {
         try {
-            // Ejecutar todas las validaciones SIN crear la orden
             ConstructionTypeCriteria criteria = validateConstructionType(order.typeConstruction());
             validateUniqueLocation(order.location());
             validateMaterials(criteria.getMaterials());
-
-            // Si llegamos aquí, todas las validaciones pasaron
             return Map.of("valid", true, "message", "La solicitud de construcción puede realizarse",
                     "estimatedDays", criteria.getEstimatedTime());
 
