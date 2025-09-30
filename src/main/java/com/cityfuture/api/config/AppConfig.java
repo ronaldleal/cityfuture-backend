@@ -5,7 +5,7 @@ import com.cityfuture.infrastructure.mapper.ConstructionMapper;
 import com.cityfuture.infrastructure.mapper.MaterialMapper;
 import com.cityfuture.infrastructure.persistence.repository.JpaConstructionOrderRepository;
 import com.cityfuture.infrastructure.persistence.repository.JpaMaterialRepository;
-import com.cityfuture.infrastructure.persistence.repository.JpaMaterialStockRepository;
+
 import com.cityfuture.infrastructure.service.ConstructionRequestUseCase;
 import com.cityfuture.infrastructure.service.MaterialServiceUseCase;
 import org.springframework.context.annotation.Bean;
@@ -24,9 +24,8 @@ public class AppConfig {
 
     @Bean
     MaterialServiceUseCase materialServiceUseCase(JpaMaterialRepository materialRepository,
-                                                  JpaMaterialStockRepository stockRepository,
                                                   MaterialMapper mapper) {
-        return new MaterialServiceUseCase(materialRepository, stockRepository, mapper);
+        return new MaterialServiceUseCase(materialRepository, mapper);
     }
 
     @Bean

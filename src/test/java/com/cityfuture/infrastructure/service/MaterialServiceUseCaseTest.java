@@ -5,9 +5,7 @@ import com.cityfuture.api.exception.MaterialNotFoundException;
 import com.cityfuture.domain.model.Material;
 import com.cityfuture.infrastructure.mapper.MaterialMapper;
 import com.cityfuture.infrastructure.persistence.entity.MaterialEntity;
-import com.cityfuture.infrastructure.persistence.entity.MaterialStockEntity;
 import com.cityfuture.infrastructure.persistence.repository.JpaMaterialRepository;
-import com.cityfuture.infrastructure.persistence.repository.JpaMaterialStockRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,9 +28,6 @@ class MaterialServiceUseCaseTest {
     private JpaMaterialRepository materialRepository;
 
     @Mock
-    private JpaMaterialStockRepository stockRepository;
-
-    @Mock
     private MaterialMapper mapper;
 
     @InjectMocks
@@ -40,7 +35,6 @@ class MaterialServiceUseCaseTest {
 
     private Material testMaterial;
     private MaterialEntity testEntity;
-    private MaterialStockEntity testStock;
 
     @BeforeEach
     void setUp() {
@@ -55,10 +49,7 @@ class MaterialServiceUseCaseTest {
         testEntity.setQuantity(100);
 
         // Material stock entity
-        testStock = new MaterialStockEntity();
-        testStock.setId(1L);
-        testStock.setMaterial(testEntity);
-        testStock.setQuantity(0);
+
     }
 
     @Test
@@ -67,8 +58,6 @@ class MaterialServiceUseCaseTest {
         when(materialRepository.findByMaterialName("Cemento")).thenReturn(Optional.empty());
         when(mapper.toEntity(testMaterial)).thenReturn(testEntity);
         when(materialRepository.save(any(MaterialEntity.class))).thenReturn(testEntity);
-        when(stockRepository.findByMaterialId(1L)).thenReturn(Optional.empty());
-        when(stockRepository.save(any(MaterialStockEntity.class))).thenReturn(testStock);
         when(mapper.toDomain(testEntity)).thenReturn(testMaterial);
 
         // Act
@@ -82,8 +71,6 @@ class MaterialServiceUseCaseTest {
 
         verify(materialRepository).findByMaterialName("Cemento");
         verify(materialRepository).save(any(MaterialEntity.class));
-        verify(stockRepository).findByMaterialId(1L);
-        verify(stockRepository).save(any(MaterialStockEntity.class));
         verify(mapper).toDomain(testEntity);
     }
 
@@ -100,25 +87,9 @@ class MaterialServiceUseCaseTest {
 
         assertTrue(exception.getMessage().contains("ya existe"));
         verify(materialRepository, never()).save(any());
-        verify(stockRepository, never()).save(any());
     }
 
-    @Test
-    void createMaterial_StockAlreadyExists_SkipsStockCreation() {
-        // Arrange
-        when(materialRepository.findByMaterialName("Cemento")).thenReturn(Optional.empty());
-        when(mapper.toEntity(testMaterial)).thenReturn(testEntity);
-        when(materialRepository.save(any(MaterialEntity.class))).thenReturn(testEntity);
-        when(stockRepository.findByMaterialId(1L)).thenReturn(Optional.of(testStock));
-        when(mapper.toDomain(testEntity)).thenReturn(testMaterial);
 
-        // Act
-        Material result = materialServiceUseCase.createMaterial(testMaterial);
-
-        // Assert
-        assertNotNull(result);
-        verify(stockRepository, never()).save(any());
-    }
 
     @Test
     void getAllMaterials_ReturnsMaterialList() {

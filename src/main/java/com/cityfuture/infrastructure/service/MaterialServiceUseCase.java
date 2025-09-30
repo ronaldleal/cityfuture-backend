@@ -6,9 +6,7 @@ import com.cityfuture.application.service.MaterialService;
 import com.cityfuture.domain.model.Material;
 import com.cityfuture.infrastructure.mapper.MaterialMapper;
 import com.cityfuture.infrastructure.persistence.entity.MaterialEntity;
-import com.cityfuture.infrastructure.persistence.entity.MaterialStockEntity;
 import com.cityfuture.infrastructure.persistence.repository.JpaMaterialRepository;
-import com.cityfuture.infrastructure.persistence.repository.JpaMaterialStockRepository;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +22,6 @@ public class MaterialServiceUseCase implements MaterialService {
     private static final Logger logger = LoggerFactory.getLogger(MaterialServiceUseCase.class);
 
     private final JpaMaterialRepository materialRepository;
-    private final JpaMaterialStockRepository stockRepository;
     private final MaterialMapper mapper;
 
     @Override
@@ -42,15 +39,6 @@ public class MaterialServiceUseCase implements MaterialService {
             MaterialEntity entity = mapper.toEntity(material);
             MaterialEntity saved = materialRepository.save(entity);
             logger.debug("Material guardado en BD - ID: {}", saved.getId());
-
-            // Crear stock inicial si es necesario
-            if (stockRepository.findByMaterialId(saved.getId()).isEmpty()) {
-                MaterialStockEntity stock = new MaterialStockEntity();
-                stock.setMaterial(saved);
-                stock.setQuantity(0);
-                stockRepository.save(stock);
-                logger.debug("Stock inicial creado para material ID: {}", saved.getId());
-            }
 
             logger.info("Material creado exitosamente - ID: {}, Nombre: {}", saved.getId(),
                     saved.getMaterialName());
