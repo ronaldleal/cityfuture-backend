@@ -3,7 +3,6 @@ package com.cityfuture.api.controller;
 import com.cityfuture.domain.model.Material;
 import com.cityfuture.infrastructure.service.MaterialServiceUseCase;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
