@@ -16,20 +16,22 @@ materiales, y programar construcciones secuenciales con validaciones automática
 
 ## 🛠️ Tecnologías
 
-- **Java 17+**
-- **Spring Boot 3.x**
+- **Java 21.0.8**
+- **Spring Boot 3.5.6**
 - **Spring Security** (JWT)
 - **Spring Data JPA**
-- **PostgreSQL**
+- **PostgreSQL 17.5**
+- **Gradle 8.x** (gestión de dependencias)
 - **MapStruct** (mapeo automático)
 - **Lombok** (reducción de boilerplate)
 - **SLF4J** (logging)
+- **Swagger/OpenAPI 3** (documentación automática)
 
 ## 📋 Prerrequisitos
 
-- Java 17 o superior
-- Maven 3.6+
-- PostgreSQL 12+
+- Java 21 o superior
+- Gradle 8.x
+- PostgreSQL 17+
 - Git
 
 ## 🗄️ Configuración de Base de Datos
@@ -80,31 +82,33 @@ GRANT ALL PRIVILEGES ON DATABASE
 cityfuture_db TO cityfuture_user;
 ```
 
-### 3. Configurar application.yml
+### 3. Configurar application.properties
 
-```yaml
-spring:
-  datasource:
-    url: jdbc:postgresql://localhost:5432/cityfuture_db
-    username: cityfuture_user
-    password: cityfuture_password
-    driver-class-name: org.postgresql.Driver
+```properties
+# Configuración de Base de Datos
+spring.datasource.url=jdbc:postgresql://localhost:5432/cityfuture_db
+spring.datasource.username=cityfuture_user
+spring.datasource.password=cityfuture_password
+spring.datasource.driver-class-name=org.postgresql.Driver
 
-  jpa:
-    hibernate:
-      ddl-auto: update
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true
+# Configuración JPA/Hibernate
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.database-platform=org.hibernate.dialect.PostgreSQLDialect
+spring.jpa.show-sql=true
 
-  security:
-    jwt:
-      secret: your-super-secret-jwt-key-here
-      expiration: 86400000 # 24 horas
+# Configuración JWT
+security.jwt.secret=your-super-secret-jwt-key-here
+security.jwt.expiration=86400000
 
-logging:
-  level:
-    com.cityfuture: DEBUG
-    org.springframework.security: DEBUG
+# Configuración de Logging
+logging.level.com.cityfuture=DEBUG
+logging.level.org.springframework.security=DEBUG
+
+# Configuración del servidor
+server.port=8084
+
+# Configuración CORS
+cors.allowed-origins=http://localhost:4200
 ```
 
 ## 🚀 Instalación y Ejecución
@@ -119,22 +123,28 @@ cd cityfuture-backend
 ### 2. Compilar el Proyecto
 
 ```bash
-mvn clean install
+./gradlew clean build
 ```
 
 ### 3. Ejecutar la Aplicación
 
 ```bash
-mvn spring-boot:run
+./gradlew bootRun
 ```
 
 O ejecutar el JAR:
 
 ```bash
-java -jar target/cityfuture-backend-1.0.0.jar
+java -jar build/libs/cityfuture-0.0.1-SNAPSHOT.jar
 ```
 
 La aplicación estará disponible en: `http://localhost:8084`
+
+### 4. Documentación API
+
+Una vez ejecutada la aplicación, la documentación Swagger estará disponible en:
+- **Swagger UI**: `http://localhost:8084/swagger-ui.html`
+- **OpenAPI JSON**: `http://localhost:8084/v3/api-docs`
 
 ## 📡 Endpoints API
 
@@ -145,6 +155,16 @@ La aplicación estará disponible en: `http://localhost:8084`
 | POST   | `/api/auth/login`    | Iniciar sesión    | Público       |
 | POST   | `/api/auth/register` | Registrar usuario | Público       |
 
+**Usuarios Predeterminados:**
+
+El sistema crea automáticamente los siguientes usuarios al iniciar:
+
+| Usuario     | Contraseña | Rol        | Descripción                    |
+|-------------|------------|------------|--------------------------------|
+| arquitecto1 | password   | ARQUITECTO | Usuario con permisos completos |
+| user1       | password   | USER       | Usuario con permisos de lectura|
+| admin       | password   | ADMIN      | Administrador del sistema      |
+
 **Ejemplo Login:**
 
 ```bash
@@ -152,7 +172,7 @@ curl -X POST http://localhost:8084/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "arquitecto1",
-    "password": "password123"
+    "password": "password"
   }'
 ```
 
@@ -179,16 +199,17 @@ curl -X POST http://localhost:8084/api/constructions \
       "latitude": 6.2442,
       "longitude": -75.5812
     },
-    "typeConstruction": "Casa"
+    "typeConstruction": "CASA"
   }'
 ```
 
 **Tipos de Construcción Disponibles:**
 
-- `Casa` (5 días)
-- `Edificio` (15 días)
-- `Piscina` (3 días)
-- `Lago` (4 días)
+- `CASA` (5 días)
+- `EDIFICIO` (15 días)
+- `CANCHA_FUTBOL` (7 días)
+- `LAGO` (4 días)
+- `GIMNASIO` (10 días)
 
 ### 🧱 Materiales
 
@@ -207,11 +228,16 @@ curl -X POST http://localhost:8084/api/materials \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
-    "materialName": "Cemento",
-    "description": "Cemento de alta calidad",
-    "code": "CEM001"
+    "materialName": "CASA",
+    "code": "CASA",
+    "quantity": 100
   }'
 ```
+
+**Validaciones del Material:**
+- `materialName`: 2-100 caracteres, no puede estar vacío
+- `code`: 2-20 caracteres, solo letras, números, guiones y guiones bajos
+- `quantity`: Número entero entre 0 y 999,999
 
 ### 📊 Reportes
 
@@ -238,15 +264,15 @@ curl -X GET http://localhost:8084/api/reports/constructions \
   "inProgressOrders": 1,
   "finishedOrders": 2,
   "pendingByType": {
-    "Casa": 1,
-    "Edificio": 1
+    "CASA": 1,
+    "EDIFICIO": 1
   },
   "inProgressByType": {
-    "Lago": 1
+    "LAGO": 1
   },
   "finishedByType": {
-    "Casa": 1,
-    "Piscina": 1
+    "CASA": 1,
+    "GIMNASIO": 1
   },
   "projectSummary": {
     "totalConstructionDays": 25,
@@ -281,8 +307,9 @@ El sistema incluye un scheduler que se ejecuta automáticamente:
 1. **Primera construcción**: Inicia al día siguiente de la solicitud
 2. **Construcciones siguientes**: Inician al día siguiente de terminar la anterior
 3. **Ejemplo**:
-    - Casa solicitada 01/01/2024 (5 días) → Inicia 02/01/2024, termina 06/01/2024
-    - Edificio solicitado 02/01/2024 (15 días) → Inicia 07/01/2024, termina 21/01/2024
+    - CASA solicitada 01/01/2024 (5 días) → Inicia 02/01/2024, termina 06/01/2024
+    - EDIFICIO solicitado 02/01/2024 (15 días) → Inicia 07/01/2024, termina 21/01/2024
+    - GIMNASIO solicitado 03/01/2024 (10 días) → Inicia 22/01/2024, termina 31/01/2024
 
 ## 🔧 Configuración Adicional
 
@@ -290,18 +317,22 @@ El sistema incluye un scheduler que se ejecuta automáticamente:
 
 ```bash
 # Base de datos
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=cityfuture_db
-DB_USER=cityfuture_user
-DB_PASSWORD=cityfuture_password
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/cityfuture_db
+SPRING_DATASOURCE_USERNAME=cityfuture_user
+SPRING_DATASOURCE_PASSWORD=cityfuture_password
 
 # JWT
-JWT_SECRET=your-super-secret-jwt-key-here
-JWT_EXPIRATION=86400000
+SECURITY_JWT_SECRET=your-super-secret-jwt-key-here
+SECURITY_JWT_EXPIRATION=86400000
+
+# Servidor
+SERVER_PORT=8084
+
+# CORS
+CORS_ALLOWED_ORIGINS=http://localhost:4200
 
 # Logging
-LOG_LEVEL=INFO
+LOGGING_LEVEL_COM_CITYFUTURE=INFO
 ```
 
 ## 📝 Validaciones del Sistema
@@ -334,9 +365,12 @@ psql -h localhost -U cityfuture_user -d cityfuture_db
 ### Error de Puerto Ocupado
 
 ```bash
-# Cambiar puerto en application.yml
-server:
-  port: 8085
+# Cambiar puerto en application.properties
+server.port=8085
+
+# O usar variable de entorno
+export SERVER_PORT=8085
+./gradlew bootRun
 ```
 
 ### Error de JWT
@@ -355,10 +389,9 @@ Los logs se encuentran en:
 
 **Habilitar logs de DEBUG:**
 
-```yaml
-logging:
-  level:
-    com.cityfuture: DEBUG
+```properties
+logging.level.com.cityfuture=DEBUG
+logging.level.org.springframework.security=DEBUG
 ```
 
 ## 🤝 Contribución
